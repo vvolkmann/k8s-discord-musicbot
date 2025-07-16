@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: musicbot-secrets-name
+type: Opaque
+stringData:
+  token: "TOKENSTRING"
+  owner: "OWNERSTRING"
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-hostpath-name
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/kube/musicbot"
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-hostpath-name
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: musicbot-name
+spec:
+  selector:
+    matchLabels:
+      app: musicbot-name
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: musicbot-name
+    spec:
+      volumes:
+      - name: bot-data-name
+        persistentVolumeClaim:
+          claimName: pvc-hostpath-name
+      - name: bot-config-name
+        secret:
+          secretName: bot-config-name
+      containers:
+      - name: musicbot-name
+        image: adoptopenjdk:latest
+        imagePullPolicy: "Always"
+        args: ["java", "-Dnogui=true", "-Dconfig=/mnt/kube/musicbot/config/config.cfg", "-jar", "/mnt/kube/musicbot/JMusicBot.jar"]
+        env:
+        - name: BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: musicbot-secrets-name
+              key: token
+        - name: BOT_OWNER
+          valueFrom:
+            secretKeyRef:
+              name: musicbot-secrets-name
+              key: owner
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "500Mi"
+          limits:
+            cpu: "200m"
+            memory: "2Gi"
+        volumeMounts:
+        - name: bot-data-name
+          readOnly: false
+          mountPath: /mnt/kube/musicbot
+        - name: bot-config-name
+          readOnly: false
+          mountPath: /mnt/kube/musicbot/config
+      initContainers:
+        - name: download-jar
+          image: alpine
+          env:
+            - name: URL
+              value: "https://github.com/jagrosh/MusicBot/releases/latest"
+          command: ['sh', '-c', 'apk --no-cache add curl 2>/dev/null && VERSION=$(curl -w "%{url_effective}\n" -I -L -s -S https://github.com/jagrosh/MusicBot/releases/latest -o /dev/null|sed "s/^.*\///") && echo "Version to downpload: $VERSION" && DOWNLOAD_URL="https://github.com/jagrosh/MusicBot/releases/download/$VERSION/JMusicBot-$VERSION.jar" && echo "Downloading JAR..." && curl -L $DOWNLOAD_URL > JMusicBot.jar && echo "Download finished!" && mv JMusicBot.jar /mnt/kube/musicbot/JMusicBot.jar']
+          volumeMounts:
+          - mountPath: /mnt/kube/musicbot
+            name: bot-data-name
