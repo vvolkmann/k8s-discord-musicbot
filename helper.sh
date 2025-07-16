@@ -3,15 +3,6 @@
 #$1 = START/STOP
 #$2 = bot-name
 
-# Variables
-#BOT_TOKEN="bot-token-here"
-#BOT_OWNER="owner-id-here"
-#BOT_PREFIX="-"
-#BOT_UPDATES="true"
-
-#K8S_BOTNAME="musicbot"
-#K8S_NAMESPACE="namespace"
-
 . ./secrets.sh
 
 
@@ -19,8 +10,8 @@ if [ "$1" = "START" ]; then
     echo "Applying resources"
     # Updates config with values from variables section
     cp ./config.txt ./config.cfg
-    #sed -i "s/^token.*$/token = $BOT_TOKEN/g" ./config.cfg
-    #sed -i "s/^owner.*$/owner = $BOT_OWNER/g" ./config.cfg
+    sed -i "s/^token.*$/token = $BOT_TOKEN/g" ./config.cfg
+    sed -i "s/^owner.*$/owner = $BOT_OWNER/g" ./config.cfg
     sed -i "s/^updatealerts.*$/updatealerts = $BOT_UPDATES/g" ./config.cfg
     sed -i "s/^prefix = .*$/prefix = \"$BOT_PREFIX\"/g" ./config.cfg
 
